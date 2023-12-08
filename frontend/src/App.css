@@ -39,7 +39,9 @@ body {
     }
 }
 
-/* ##### GPT WEBSITE STYLING STARTS HERE  */
+/* ##### WEBSITE STYLING STARTS HERE  */
+
+/* ##### GENERAL  */
 
 .border-page {
     border: 2px solid red;
@@ -124,4 +126,28 @@ body {
 .MuiDataGrid-cell:focus,
 .MuiDataGrid-cell:focus-within {
     outline: none !important;
+}
+
+/* ##### File Upload Component  */
+.file-upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.file-upload-input {
+    display: none;
+}
+
+#file-upload-button {
+    border-radius: 8px;
+    margin: 8px;
+    background-color: white;
+    color: teal;
+}
+#file-upload-button-final {
+    border-radius: 8px;
+    margin: 8px;
+    background-color: teal;
+    color: white;
 }

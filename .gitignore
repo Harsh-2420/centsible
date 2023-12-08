@@ -4,3 +4,4 @@
 node_modules/
 *.json
 venv/
+flask_session/

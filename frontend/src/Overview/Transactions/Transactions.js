@@ -2,11 +2,18 @@ import * as React from "react"
 import { format } from "date-fns"
 import "../../../src/App.css"
 import { useState, useEffect } from "react"
+
+import { TransactionMetrics } from "./TransactionMetrics"
 import axios from "axios"
 import chroma from "chroma-js"
 import { makeStyles } from "@mui/styles"
 import { DataGrid } from "@mui/x-data-grid"
 import { SelectableCell } from "../../../src/Components/SelectableCell"
+import { DemoContainer } from "@mui/x-date-pickers/internals/demo"
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs"
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
+import { DatePicker } from "@mui/x-date-pickers/DatePicker"
+import dayjs from "dayjs"
 
 const useStyles = makeStyles((theme) => ({
     table: {
@@ -25,6 +32,8 @@ export const Transactions = () => {
     const classes = useStyles()
 
     const [transactionData, setTransactionData] = useState(null)
+    const [selectedDate, setSelectedDate] = useState(dayjs(new Date()))
+    const [filteredData, setFilteredData] = useState(transactionData)
 
     function parseJsonWithNaN(jsonString) {
         try {
@@ -39,7 +48,9 @@ export const Transactions = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get("http://127.0.0.1:5000/")
+                const response = await axios.get(
+                    "http://127.0.0.1:5000/process_transaction_files"
+                )
                 const data = response.data
                 const jsonData = parseJsonWithNaN(data)
                 setTransactionData(jsonData)
@@ -54,6 +65,13 @@ export const Transactions = () => {
 
         fetchData() // Call the fetchData function
     }, [])
+    // useEffect(() => {
+    //     // This useEffect will be triggered whenever filteredData is updated
+    //     // You can perform any side effects or additional logic here
+    //     // console.log("Filtered Data updated:", filteredData[3])
+    //     console.log("useEffect trans data")
+    //     // filterDataByDate(selectedDate)
+    // }, [transactionData])
 
     const handleRenderStatOff = (value, maxPos, maxNeg) => {
         const isNegative = value < 0
@@ -90,6 +108,21 @@ export const Transactions = () => {
     const formatDate = (dateString) => {
         const parsedDate = new Date(dateString)
         return format(parsedDate, "yyyy-MM-dd") // Change the format as needed
+    }
+    const handleDateChange = (date) => {
+        setSelectedDate(date)
+        filterDataByDate(date, transactionData)
+    }
+    const filterDataByDate = (selectedDate, transactionDataCurr) => {
+        const filteredData = transactionDataCurr.filter((item) => {
+            const itemDate = dayjs(item.transaction_date)
+            return (
+                itemDate.month() === selectedDate.month() &&
+                itemDate.year() === selectedDate.year()
+            )
+        })
+
+        setFilteredData(filteredData)
     }
     const columns = [
         // { field: "id", headerName: "ID", flex: 1, width: 120 },
@@ -150,13 +183,6 @@ export const Transactions = () => {
         },
     ]
     const handleTagUpdate = (id, newValue) => {
-        // Send a POST request to update the data in your backend
-        // You can use fetch or an HTTP library like axios
-        const dataToUpdate = {
-            id, // The unique identifier of the row
-            group_tags: newValue, // The new group tag value
-        }
-        console.log(dataToUpdate)
         // Update the data source (rows) with the new value
         const updatedRows = transactionData.map((row) => {
             if (row.id === id) {
@@ -165,7 +191,16 @@ export const Transactions = () => {
             }
             return row
         })
+        // transactionData -> ALL months
+        // filteredData -> transactionData filters it by month
         setTransactionData(updatedRows)
+        filterDataByDate(selectedDate, updatedRows)
+
+        // Define dataToUpdate
+        const dataToUpdate = {
+            id, // The unique identifier of the row
+            group_tags: newValue, // The new group tag value
+        }
 
         axios
             .post("/group_tags_update", dataToUpdate)
@@ -175,15 +210,21 @@ export const Transactions = () => {
             .catch((error) => {
                 console.error("Error:", error)
             })
-        // TODO: Make the POST request and handle the response
-        // ...
     }
 
     return (
         <>
-            {transactionData ? (
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DemoContainer components={["DatePicker"]}>
+                    <DatePicker
+                        views={["month", "year"]}
+                        defaultValue={selectedDate}
+                        onChange={handleDateChange}
+                    />
+                </DemoContainer>
+            </LocalizationProvider>
+            {filteredData ? (
                 <>
-                    {/* <div style={{ height: "100%", width: "100%" }}> */}
                     <DataGrid
                         sx={{
                             fontFamily: "Futura",
@@ -194,17 +235,23 @@ export const Transactions = () => {
                                 fontWeight: "900",
                             },
                         }}
-                        rows={transactionData}
+                        rows={filteredData}
                         columns={columns}
                         autoHeight={true}
                         rowHeight={70}
                         className="custom-datagrid"
+                        initialState={{
+                            ...filteredData.initialState,
+                            pagination: { paginationModel: { pageSize: 10 } },
+                        }}
+                        pageSizeOptions={[10, 25, 50, 100]}
                     />
                     {/* </div> */}
                 </>
             ) : (
                 <></>
             )}
+            <TransactionMetrics filteredData={filteredData} />
         </>
     )
 }
